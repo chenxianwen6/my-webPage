@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天赋罗盘测试</title>
+    <!-- 引入Tailwind CSS简化样式开发 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 自定义配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4361ee',
+                        secondary: '#3f37c9',
+                        accent: '#4895ef',
+                        neutral: '#f8f9fa',
+                        dark: '#212529',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .compass-bg {
+                background: linear-gradient(135deg, #4361ee 0%, #3f37c9 50%, #4895ef 100%);
+            }
+            .option-hover {
+                transition: all 0.3s ease;
+            }
+            .option-hover:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px -5px rgba(67, 97, 238, 0.1);
+            }
+            .progress-bar {
+                transition: width 0.5s ease-in-out;
+            }
+        }
+    </style>
+</head>
+<body class="bg-neutral min-h-screen font-sans text-dark">
+    <!-- 页面容器 -->
+    <div class="container mx-auto px-4 py-8 max-w-3xl">
+        <!-- 标题区域 -->
+        <header class="text-center mb-8">
+            <h1 class="text-[clamp(1.8rem,4vw,2.8rem)] font-bold text-primary mb-2">天赋罗盘测试</h1>
+            <p class="text-gray-600">探索你的内在潜能，发现独特的天赋优势</p>
+        </header>
+
+        <!-- 进度条 -->
+        <div class="w-full bg-gray-200 rounded-full h-2.5 mb-8">
+            <div id="progressBar" class="progress-bar bg-primary h-2.5 rounded-full w-0"></div>
+        </div>
+
+        <!-- 测试容器 -->
+        <main>
+            <!-- 开始页面 -->
+            <section id="startScreen" class="block text-center">
+                <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+                    <div class="w-24 h-24 mx-auto mb-6 compass-bg rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-compass text-white text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-semibold mb-4">开启你的天赋探索之旅</h2>
+                    <p class="text-gray-600 mb-6">
+                        本测试包含10个问题，旨在帮助你发现自己的核心天赋和优势领域。
+                        请根据你的真实想法和感受作答，无需过度思考。
+                    </p>
+                    <button id="startBtn" class="compass-bg text-white px-8 py-3 rounded-lg font-medium option-hover">
+                        开始测试
+                    </button>
+                </div>
+            </section>
+
+            <!-- 问题页面 -->
+            <section id="quizScreen" class="hidden">
+                <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <span id="questionNumber" class="text-primary font-semibold">问题 1/10</span>
+                        <span id="timer" class="text-gray-500"><i class="fa-solid fa-clock mr-1"></i> 无需计时</span>
+                    </div>
+                    <h3 id="questionText" class="text-xl font-medium mb-8"></h3>
+                    <div id="optionsContainer" class="grid grid-cols-1 gap-4">
+                        <!-- 选项会通过JS动态生成 -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 结果页面 -->
+            <section id="resultScreen" class="hidden">
+                <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+                    <div class="text-center mb-8">
+                        <div class="w-32 h-32 mx-auto mb-6 compass-bg rounded-full flex items-center justify-center">
+                            <i class="fa-solid fa-award text-white text-4xl"></i>
+                        </div>
+                        <h2 id="resultTitle" class="text-2xl font-bold mb-2"></h2>
+                        <p id="resultSubtitle" class="text-gray-600 mb-4"></p>
+                    </div>
+                    
+                    <!-- 天赋雷达图容器 -->
+                    <div class="mb-8">
+                        <canvas id="resultChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <!-- 详细解读 -->
+                    <div id="resultDescription" class="text-gray-700 leading-relaxed mb-8"></div>
+                    
+                    <!-- 操作按钮 -->
+                    <div class="flex justify-center gap-4">
+                        <button id="restartBtn" class="border border-primary text-primary px-6 py-2 rounded-lg font-medium option-hover">
+                            重新测试
+                        </button>
+                        <button id="shareBtn" class="compass-bg text-white px-6 py-2 rounded-lg font-medium option-hover">
+                            <i class="fa-solid fa-share-nodes mr-2"></i>分享结果
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="text-center text-gray-500 text-sm mt-12">
+            <p>© 2025 天赋罗盘测试 | 本测试仅供参考，非专业心理评估</p>
+        </footer>
+    </div>
+
+    <!-- 引入Chart.js用于绘制结果图表 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- 核心逻辑脚本 -->
+    <script>
+        // 测试题库
+        const questions = [
+            {
+                id: 1,
+                text: "当你需要解决一个复杂问题时，你更倾向于？",
+                options: [
+                    { text: "分析数据和事实，逻辑推理", value: { logical: 3, creative: 1, social: 1, practical: 2 } },
+                    { text: "头脑风暴，尝试创新的解决方案", value: { logical: 1, creative: 3, social: 2, practical: 1 } },
+                    { text: "寻求他人的建议和合作", value: { logical: 1, creative: 2, social: 3, practical: 1 } },
+                    { text: "依靠过往经验，务实解决", value: { logical: 2, creative: 1, social: 1, practical: 3 } }
+                ]
+            },
+            {
+                id: 2,
+                text: "在团队项目中，你通常扮演的角色是？",
+                options: [
+                    { text: "策划者和分析者", value: { logical: 3, creative: 2, social: 1, practical: 1 } },
+                    { text: "创意提供者和灵感来源", value: { logical: 1, creative: 3, social: 2, practical: 1 } },
+                    { text: "协调者和沟通者", value: { logical: 1, creative: 1, social: 3, practical: 2 } },
+                    { text: "执行者和落地者", value: { logical: 2, creative: 1, social: 1, practical: 3 } }
+                ]
+            },
+            {
+                id: 3,
+                text: "你最喜欢的学习方式是？",
+                options: [
+                    { text: "阅读和研究理论知识", value: { logical: 3, creative: 1, social: 1, practical: 2 } },
+                    { text: "通过实践和动手操作", value: { logical: 1, creative: 2, social: 1, practical: 3 } },
+                    { text: "与他人讨论和交流", value: { logical: 1, creative: 1, social: 3, practical: 1 } },
+                    { text: "探索新想法和可能性", value: { logical: 2, creative: 3, social: 1, practical: 1 } }
+                ]
+            },
+            {
+                id: 4,
+                text: "当你有空闲时间，你更愿意做什么？",
+                options: [
+                    { text: "解谜或玩策略游戏", value: { logical: 3, creative: 1, social: 1, practical: 2 } },
+                    { text: "创作艺术作品或写东西", value: { logical: 1, creative: 3, social: 1, practical: 1 } },
+                    { text: "和朋友聚会或参加社交活动", value: { logical: 1, creative: 1, social: 3, practical: 1 } },
+                    { text: "动手制作或修理东西", value: { logical: 1, creative: 2, social: 1, practical: 3 } }
+                ]
+            },
+            {
+                id: 5,
+                text: "你认为自己最突出的优点是？",
+                options: [
+                    { text: "思维清晰，善于分析", value: { logical: 3, creative: 1, social: 1, practical: 2 } },
+                    { text: "富有想象力，不拘一格", value: { logical: 1, creative: 3, social: 1, practical: 1 } },
+                    { text: "善解人意，乐于助人", value: { logical: 1, creative: 1, social: 3, practical: 1 } },
+                    { text: "脚踏实地，执行力强", value: { logical: 2, creative: 1, social: 1, practical: 3 } }
+                ]
+            },
+            {
+                id: 6,
+                text: "面对新的挑战，你的第一反应是？",
+                options: [
+                    { text: "分析利弊，制定详细计划", value: { logical: 3, creative: 1, social: 1, practical: 2 } },
+                    { text: "尝试不同的方法，寻找突破口", value: { logical: 1, creative: 3, social: 1, practical: 1 } },
+                    { text: "寻求支持，与他人共同面对", value: { logical: 1, creative: 1, social: 3, practical: 1 } },
+                    { text: "立即行动，边做边调整", value: { logical: 1, creative: 2, social: 1, practical: 3 } }
+                ]
+            },
+            {
+                id: 7,
+                text: "你更容易记住什么类型的信息？",
+                options: [
+                    { text: "数字、公式和逻辑关系", value: { logical: 3, creative: 1, social: 1, practical: 2 } },
+                    { text: "图像、故事和创意概念", value: { logical: 1, creative: 3, social: 1, practical: 1 } },
+                    { text: "与人相关的细节和对话", value: { logical: 1, creative: 1, social: 3, practical: 1 } },
+                    { text: "操作步骤和实际经验", value: { logical: 2, creative: 1, social: 1, practical: 3 } }
+                ]
+            },
+            {
+                id: 8,
+                text: "在工作中，你最看重什么？",
+                options: [
+                    { text: "准确性和逻辑性", value: { logical: 3, creative: 1, social: 1, practical: 2 } },
+                    { text: "创新性和独特性", value: { logical: 1, creative: 3, social: 1, practical: 1 } },
+                    { text: "团队和谐与合作", value: { logical: 1, creative: 1, social: 3, practical: 1 } },
+                    { text: "实用性和成果导向", value: { logical: 1, creative: 1, social: 1, practical: 3 } }
+                ]
+            },
+            {
+                id: 9,
+                text: "当你需要表达想法时，你更倾向于？",
+                options: [
+                    { text: "用数据和事实说话", value: { logical: 3, creative: 1, social: 1, practical: 2 } },
+                    { text: "用比喻和故事表达", value: { logical: 1, creative: 3, social: 2, practical: 1 } },
+                    { text: "倾听为主，引导对话", value: { logical: 1, creative: 1, social: 3, practical: 1 } },
+                    { text: "直接明了，注重实效", value: { logical: 2, creative: 1, social: 1, practical: 3 } }
+                ]
+            },
+            {
+                id: 10,
+                text: "你认为成功的关键是？",
+                options: [
+                    { text: "理性思考和正确决策", value: { logical: 3, creative: 1, social: 1, practical: 2 } },
+                    { text: "创新思维和持续学习", value: { logical: 1, creative: 3, social: 1, practical: 1 } },
+                    { text: "人际关系和团队协作", value: { logical: 1, creative: 1, social: 3, practical: 1 } },
+                    { text: "坚持不懈和实际行动", value: { logical: 1, creative: 2, social: 1, practical: 3 } }
+                ]
+            }
+        ];
+
+        // 结果配置
+        const results = {
+            logical: {
+                title: "逻辑分析天赋",
+                subtitle: "你的理性思维能力超群",
+                description: "你拥有出色的逻辑分析和批判性思维能力，善于从复杂信息中梳理出清晰的脉络。在需要理性判断、数据分析和策略规划的领域，你能发挥最大优势。适合从事科研、数据分析、编程、金融分析、法律咨询等领域。建议继续锻炼你的抽象思维能力，同时可以适当培养创造性思维，让分析更有突破性。"
+            },
+            creative: {
+                title: "创新创造天赋",
+                subtitle: "你的想象力和创造力无限",
+                description: "你拥有丰富的想象力和创新思维，总能提出与众不同的见解和解决方案。在艺术创作、产品设计、市场营销、创意策划等领域，你能大放异彩。建议多参与创意类项目，同时学习一些结构化的思维方法，让创意更好地落地实施。"
+            },
+            social: {
+                title: "社交沟通天赋",
+                subtitle: "你的人际理解和沟通能力出众",
+                description: "你善于理解他人、沟通协调，拥有出色的同理心和社交智慧。在管理、销售、心理咨询、教育、人力资源等领域，你能展现独特优势。建议继续提升你的倾听和共情能力，同时学习一些逻辑分析技巧，让沟通更有说服力。"
+            },
+            practical: {
+                title: "实践执行天赋",
+                subtitle: "你的动手能力和执行力卓越",
+                description: "你脚踏实地、执行力强，善于将想法转化为实际成果。在工程技术、项目管理、手工艺、运营管理等领域，你能取得优异成绩。建议继续强化你的实践能力，同时培养创新思维，让执行更有创造性。"
+            },
+            balanced: {
+                title: "全能平衡天赋",
+                subtitle: "你的各项能力均衡发展",
+                description: "你在逻辑分析、创新创造、社交沟通和实践执行各方面都有不错的表现，是难得的全能型人才。你能够适应多种工作场景，在团队中可以扮演多种角色。建议找到自己最感兴趣的领域深入发展，同时保持各方面能力的平衡，成为复合型人才。"
+            }
+        };
+
+        // 全局变量
+        let currentQuestionIndex = 0;
+        let scores = { logical: 0, creative: 0, social: 0, practical: 0 };
+        let resultType = "";
+
+        // DOM元素
+        const startScreen = document.getElementById('startScreen');
+        const quizScreen = document.getElementById('quizScreen');
+        const resultScreen = document.getElementById('resultScreen');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const shareBtn = document.getElementById('shareBtn');
+        const progressBar = document.getElementById('progressBar');
+        const questionNumber = document.getElementById('questionNumber');
+        const questionText = document.getElementById('questionText');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultSubtitle = document.getElementById('resultSubtitle');
+        const resultDescription = document.getElementById('resultDescription');
+
+        // 初始化函数
+        function init() {
+            // 绑定事件
+            startBtn.addEventListener('click', startQuiz);
+            restartBtn.addEventListener('click', restartQuiz);
+            shareBtn.addEventListener('click', shareResult);
+            
+            // 初始化进度条
+            updateProgress();
+        }
+
+        // 开始测试
+        function startQuiz() {
+            startScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            loadQuestion();
+        }
+
+        // 加载当前问题
+        function loadQuestion() {
+            const currentQuestion = questions[currentQuestionIndex];
+            
+            // 更新问题信息
+            questionNumber.textContent = `问题 ${currentQuestionIndex + 1}/${questions.length}`;
+            questionText.textContent = currentQuestion.text;
+            
+            // 清空并生成选项
+            optionsContainer.innerHTML = '';
+            currentQuestion.options.forEach((option, index) => {
+                const optionElement = document.createElement('button');
+                optionElement.className = 'option-hover text-left p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-all';
+                optionElement.textContent = option.text;
+                optionElement.addEventListener('click', () => selectOption(option.value));
+                optionsContainer.appendChild(optionElement);
+            });
+            
+            // 更新进度条
+            updateProgress();
+        }
+
+        // 选择选项
+        function selectOption(optionValue) {
+            // 累加分数
+            for (const key in optionValue) {
+                scores[key] += optionValue[key];
+            }
+            
+            // 进入下一题或显示结果
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                loadQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        // 更新进度条
+        function updateProgress() {
+            const progress = (currentQuestionIndex / questions.length) * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+
+        // 显示结果
+        function showResult() {
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            
+            // 计算最高分类型
+            const scoreValues = Object.values(scores);
+            const maxScore = Math.max(...scoreValues);
+            const maxScoreIndex = scoreValues.indexOf(maxScore);
+            const scoreKeys = Object.keys(scores);
+            
+            // 判断是否为均衡型（最高分和最低分差距小于5）
+            const minScore = Math.min(...scoreValues);
+            if (maxScore - minScore < 5) {
+                resultType = 'balanced';
+            } else {
+                resultType = scoreKeys[maxScoreIndex];
+            }
+            
+            // 更新结果内容
+            resultTitle.textContent = results[resultType].title;
+            resultSubtitle.textContent = results[resultType].subtitle;
+            resultDescription.textContent = results[resultType].description;
+            
+            // 绘制雷达图
+            drawResultChart();
+        }
+
+        // 绘制结果雷达图
+        function drawResultChart() {
+            const ctx = document.getElementById('resultChart').getContext('2d');
+            
+            // 销毁已存在的图表
+            if (window.resultChartInstance) {
+                window.resultChartInstance.destroy();
+            }
+            
+            // 创建新图表
+            window.resultChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['逻辑分析', '创新创造', '社交沟通', '实践执行'],
+                    datasets: [{
+                        label: '你的天赋分值',
+                        data: [scores.logical, scores.creative, scores.social, scores.practical],
+                        backgroundColor: 'rgba(67, 97, 238, 0.2)',
+                        borderColor: '#4361ee',
+                        pointBackgroundColor: '#4361ee',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#4361ee'
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 30
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // 重新测试
+        function restartQuiz() {
+            // 重置状态
+            currentQuestionIndex = 0;
+            scores = { logical: 0, creative: 0, social: 0, practical: 0 };
+            resultType = "";
+            
+            // 显示开始页面
+            resultScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            
+            // 重置进度条
+            updateProgress();
+        }
+
+        // 分享结果
+        function shareResult() {
+            // 模拟分享功能
+            alert('分享功能已触发！在实际项目中，这里可以集成社交媒体分享API。');
+            
+            // 实际项目中可以使用以下代码：
+            /*
+            if (navigator.share) {
+                navigator.share({
+                    title: '我的天赋罗盘测试结果',
+                    text: `我的主要天赋是：${results[resultType].title} - ${results[resultType].subtitle}`,
+                    url: window.location.href,
+                })
+                .catch((error) => console.log('分享失败:', error));
+            } else {
+                // 回退方案：复制链接
+                navigator.clipboard.writeText(window.location.href);
+                alert('链接已复制到剪贴板！');
+            }
+            */
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
